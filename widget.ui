@@ -35,7 +35,7 @@
          <item alignment="Qt::AlignmentFlag::AlignHCenter">
           <widget class="QLabel" name="label_6">
            <property name="text">
-            <string>读取：</string>
+            <string>日志：</string>
            </property>
           </widget>
          </item>

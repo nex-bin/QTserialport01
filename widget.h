@@ -5,6 +5,7 @@
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include "QTimer"
+#include <QTextBrowser>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -31,6 +32,7 @@ public:
     bool HexReadFlag = 1;
     bool isConnected = 0;
     bool enableReadSerialPortData = 1;
+    void appendColorText(QTextBrowser * browser,const QString & text,const QString & color);
 
     void fleshSerialPort();
 

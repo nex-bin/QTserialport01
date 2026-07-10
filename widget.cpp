@@ -93,6 +93,7 @@ void Widget::on_pushButton_clicked()
 
 }
 void Widget::on_pushButton_2_clicked(){
+//打开/关闭串口
 
     if(isConnected){
         //之前串口是连接的，再点击就该断开了。
@@ -109,6 +110,11 @@ void Widget::on_pushButton_2_clicked(){
         ui->comboBox_5->setEnabled(true);
         ui->comboBox_6->setEnabled(true);
         ui->pushButton->setEnabled(true);
+        ui->pushButton_3->setEnabled(isConnected);
+        ui->pushButton_4->setEnabled(isConnected);
+
+        ui->checkBox->setEnabled(isConnected);
+        ui->checkBox_2->setEnabled(isConnected);
         qDebug()<<"串口已经关闭";
         ui->pushButton_2->setText("打开串口");
         return;
@@ -224,6 +230,11 @@ void Widget::on_pushButton_2_clicked(){
         ui->comboBox_6->setEnabled(false);
         ui->pushButton->setEnabled(false);
 
+        ui->pushButton_3->setEnabled(isConnected);
+        ui->pushButton_4->setEnabled(isConnected);
+        ui->checkBox->setEnabled(isConnected);
+        ui->checkBox_2->setEnabled(isConnected);
+
         connect(serialPort, &QSerialPort::readyRead, this, &Widget::readSerialData);
     }
     else{
@@ -266,6 +277,13 @@ void Widget::init_app(){
     ReadMode->setExclusive(true);
     ui->checkBox_4->setChecked(true);
 
+
+    ui->pushButton_3->setEnabled(isConnected);
+    ui->pushButton_4->setEnabled(isConnected);
+    ui->checkBox->setEnabled(isConnected);
+    ui->checkBox_2->setEnabled(isConnected);
+
+
 }
 void Widget::readSerialData(){
     qDebug()<<"串口可读取：";
@@ -301,15 +319,20 @@ void Widget::on_timerOut(){
         return;
     }
     qDebug()<<readDataBuffer;
-    qDebug() << "原始十六进制:" << readDataBuffer.toHex(' ').toUpper();
-    QString time = "[" + QTime::currentTime().toString() + "] ";
+    qDebug() << "原始十六进制:" <<typeid(readDataBuffer).name() << readDataBuffer.toHex(' ').toUpper();
+    QString time = QString("[" + QTime::currentTime().toString() + "] ");
     qDebug()<<enableReadSerialPortData;
     if(enableReadSerialPortData){
         if(HexReadFlag){
-            ui->textBrowser->append(time + readDataBuffer.toHex(' ').toUpper());
+            QString text = QString(readDataBuffer.toHex(' ').toUpper());
+            appendColorText(ui->textBrowser,text,"red");
+            // ui->textBrowser->append(time + text);
 
         }else{
-            ui->textBrowser->append(time + QString::fromUtf8(readDataBuffer));
+            QString text = QString(QString::fromUtf8(readDataBuffer));
+            appendColorText(ui->textBrowser,text,"red");
+
+            // ui->textBrowser->append(time + text);
 
         }
     }
@@ -358,6 +381,7 @@ void Widget::on_pushButton_3_clicked(){
     }
     //数据清洗
     QString text = ui->textEdit->toPlainText();
+    QString text1 = text;
     text.remove(QRegularExpression("\\s+"));  //去除空格和换行
     //判断是否为空
     if(text.isEmpty()){
@@ -369,23 +393,20 @@ void Widget::on_pushButton_3_clicked(){
         qDebug()<<"text 中含有非法字符，请重新输入。";
         return;
     }
-    qDebug()<<"text: "+ text ;
-    qDebug()<<QString(typeid(text).name());
-    qDebug()<<"text.toUtf8(): "+text.toUtf8();
-    qDebug()<<QString(typeid(text.toUtf8()).name());
     QByteArray data = QByteArray::fromHex(text.toUtf8());
+
     int a = 0;
     //定义写模式
     if(HexWriteFlag){
         //Hex写
         a = serialPort->write(data);
+
     }else{
         //Ascll写
         a = serialPort->write(text.toUtf8());
     }
-    // int a = serialPort->write(data);
-    qDebug()<<"data: "+ data;
-    qDebug()<<QString(typeid(data).name());
+    appendColorText(ui->textBrowser,text1,"green");
+
     if(a<0){
         QMessageBox::warning(this,"wrong","写错误");
     }
@@ -401,6 +422,14 @@ void Widget::fleshSerialPort(){
             qDebug()<<"find port";
         }
     }
+
+}
+void Widget::appendColorText(QTextBrowser * browser,const QString & text,const QString & color){
+    QString time = QTime::currentTime().toString();
+    QString st = QString("<span style='color:black;'>[%1]</span>""<span style='color:%2;'>[%3]</span>"
+                         ).arg(time).arg(color).arg(text);
+    qDebug()<<"st"<<st;
+    browser->append(st);
 
 }
 
