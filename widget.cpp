@@ -81,37 +81,27 @@ void Widget::on_comboBox_5_activated(int index)
 
 void Widget::on_pushButton_clicked()
 {
-    const auto serialPortInfos = QSerialPortInfo::availablePorts();
-    if (serialPortInfos.isEmpty()) {
-        qDebug() << "No serial ports found.";
-        ui->comboBox->addItem("No serial ports");
-
-    }
     ui->comboBox->clear();
-    for (const QSerialPortInfo &portInfo : serialPortInfos) {
-
-        ui->comboBox->addItem(portInfo.portName() );
-
-    }
+    fleshSerialPort();
     // 遍历列表，打印每个串口的信息
-    for (const QSerialPortInfo &portInfo : serialPortInfos) {
-        qDebug() << "串口信息：\n"
-                 << "Port:" << portInfo.portName() << "\n"
-                 << "Location:" << portInfo.systemLocation() << "\n"
-                 << "Description:" << portInfo.description() << "\n"
-                 << "Manufacturer:" << portInfo.manufacturer() << "\n"
-                 << "Serial number:" << portInfo.serialNumber() << "\n"
-                 << "Vendor Identifier:"
-                 << (portInfo.hasVendorIdentifier()
-                         ? QByteArray::number(portInfo.vendorIdentifier(), 16)
-                         : QByteArray()) << "\n"
-                 << "Product Identifier:"
-                 << (portInfo.hasProductIdentifier()
-                         ? QByteArray::number(portInfo.productIdentifier(), 16)
-                         : QByteArray())
-                 << "portInfo manufacturer()" << portInfo.manufacturer()<<"\n"
-                 <<"manufecturer";
-    }
+    // for (const QSerialPortInfo &portInfo : serialPortInfos) {
+    //     qDebug() << "串口信息：\n"
+    //              << "Port:" << portInfo.portName() << "\n"
+    //              << "Location:" << portInfo.systemLocation() << "\n"
+    //              << "Description:" << portInfo.description() << "\n"
+    //              << "Manufacturer:" << portInfo.manufacturer() << "\n"
+    //              << "Serial number:" << portInfo.serialNumber() << "\n"
+    //              << "Vendor Identifier:"
+    //              << (portInfo.hasVendorIdentifier()
+    //                      ? QByteArray::number(portInfo.vendorIdentifier(), 16)
+    //                      : QByteArray()) << "\n"
+    //              << "Product Identifier:"
+    //              << (portInfo.hasProductIdentifier()
+    //                      ? QByteArray::number(portInfo.productIdentifier(), 16)
+    //                      : QByteArray())
+    //              << "portInfo manufacturer()" << portInfo.manufacturer()<<"\n"
+    //              <<"manufecturer";
+    // }
 
     Widget::on_comboBox_activated(0);
     Widget::on_comboBox_2_activated(baudPortIndex);
@@ -269,9 +259,8 @@ void Widget::init_app(){
     m_timer->setSingleShot(true);
     m_timer->setInterval(20);
 
-
     //初始化串口
-    ui->comboBox->addItem("no port");
+    fleshSerialPort();
     //初始化波特率
     ui->comboBox_2->addItems({"9600", "19200", "38400", "57600", "115200"});
     //初始奇偶校验
@@ -295,6 +284,7 @@ void Widget::init_app(){
     ReadMode->addButton(ui->checkBox_4);
     ReadMode->setExclusive(true);
     ui->checkBox_4->setChecked(true);
+
 }
 void Widget::readSerialData(){
     qDebug()<<"串口可读取：";
@@ -417,6 +407,18 @@ void Widget::on_pushButton_3_clicked(){
     qDebug()<<QString(typeid(data).name());
     if(a<0){
         QMessageBox::warning(this,"wrong","写错误");
+    }
+
+}
+void Widget::fleshSerialPort(){
+    const auto serialPortInfos = QSerialPortInfo::availablePorts();
+    if(serialPortInfos.isEmpty()){
+        ui->comboBox->addItem("no port");
+    }else{
+        for (const QSerialPortInfo &portInfo : serialPortInfos) {
+            ui->comboBox->addItem(portInfo.portName() );
+            qDebug()<<"find port";
+        }
     }
 
 }

@@ -32,6 +32,8 @@ public:
     bool isConnected = 0;
     bool enableReadSerialPortData = 1;
 
+    void fleshSerialPort();
+
     QTimer *m_timer;
     QByteArray readDataBuffer;
 
