@@ -83,25 +83,6 @@ void Widget::on_pushButton_clicked()
 {
     ui->comboBox->clear();
     fleshSerialPort();
-    // 遍历列表，打印每个串口的信息
-    // for (const QSerialPortInfo &portInfo : serialPortInfos) {
-    //     qDebug() << "串口信息：\n"
-    //              << "Port:" << portInfo.portName() << "\n"
-    //              << "Location:" << portInfo.systemLocation() << "\n"
-    //              << "Description:" << portInfo.description() << "\n"
-    //              << "Manufacturer:" << portInfo.manufacturer() << "\n"
-    //              << "Serial number:" << portInfo.serialNumber() << "\n"
-    //              << "Vendor Identifier:"
-    //              << (portInfo.hasVendorIdentifier()
-    //                      ? QByteArray::number(portInfo.vendorIdentifier(), 16)
-    //                      : QByteArray()) << "\n"
-    //              << "Product Identifier:"
-    //              << (portInfo.hasProductIdentifier()
-    //                      ? QByteArray::number(portInfo.productIdentifier(), 16)
-    //                      : QByteArray())
-    //              << "portInfo manufacturer()" << portInfo.manufacturer()<<"\n"
-    //              <<"manufecturer";
-    // }
 
     Widget::on_comboBox_activated(0);
     Widget::on_comboBox_2_activated(baudPortIndex);
