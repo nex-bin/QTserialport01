@@ -17,7 +17,7 @@ FORMS += \
     widget.ui
 
 QMAKE_LFLAGS_RELEASE += -s
-CONFIG += lto
+CONFIG += lto debug
 
 RC_ICONS = myico.ico
 # Default rules for deployment.

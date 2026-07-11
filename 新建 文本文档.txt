@@ -1,0 +1,45 @@
+//数据清洗
+    QString text = ui->textEdit->toPlainText();
+    QString text1 = text;
+    text.remove(QRegularExpression("\\s+"));  //去除空格和换行
+    //判断是否为空
+    if(text.isEmpty()){
+        appendColorText(ui->textBrowser,"输入为空，请重新输入。",WARNing);
+        qDebug()<<"text is empty.";
+        return;
+    }
+    QRegularExpression hexPattern("^[0-9A-Fa-f]+$");
+    if(!hexPattern.match(text).hasMatch()){
+        appendColorText(ui->textBrowser,"输入中含有非法字符，请重新输入。",ERROR);
+        qDebug()<<"text 中含有非法字符，请重新输入。";
+        return;
+    }
+    QByteArray data = QByteArray::fromHex(text.toUtf8());
+
+    qint64 bytes ;
+    //定义写模式
+    if(HexWriteFlag){
+        //Hex写
+        // bytes = serialPort->write(data);
+        bytes = serialWrite(serialPort,data);
+
+
+    }else{
+        //Ascll写
+        // bytes = serialPort->write(text.toUtf8());
+        bytes = serialWrite(serialPort,text.toUtf8());
+
+    }
+    serialPort->flush();
+    qDebug()<<bytes;
+    if(bytes>0){
+        appendColorText(ui->textBrowser,text1,SEND);
+    }else{
+        appendColorText(ui->textBrowser,"写 出错",ERROR);
+    }
+    qDebug()<<"test"<<serialPort->errorString();
+
+    if(bytes<0){
+        QMessageBox::warning(this,"wrong","写错误");
+    }
+    bytes = -1;

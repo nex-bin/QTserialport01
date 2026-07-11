@@ -19,22 +19,27 @@ class Widget : public QWidget
     QSerialPort *serialPort;//定义串口指针
 
 public:
+    enum LOGLEVEL{INFO,DEBUG,WARNing,ERROR,SUCCESS,RECEIVE,SEND};
+    enum WRITETYPE {ASCLL,HEX};
     explicit Widget(QWidget *parent = nullptr);
     ~Widget() override;
     void init_app();
     void readSerialData();
+    int portIndex = 0;
     int baudPortIndex = 0;
     int parityIndex = 0;
     int stopIndex = 0;
     int dataBitIndex = 3;
     int flowControlIndex = 0;
-    bool HexWriteFlag = 1;
-    bool HexReadFlag = 1;
-    bool isConnected = 0;
-    bool enableReadSerialPortData = 1;
-    void appendColorText(QTextBrowser * browser,const QString & text,const QString & color);
+    bool HexWriteFlag = 1;                  //十六进制写入标识
+    bool HexReadFlag = 1;                   //十六进制读取标识
+    bool isConnected = 0;                   //串口连接标识
+    bool enableReadSerialPortData = 1;      //串口可读标识
 
-    void fleshSerialPort();
+    void appendColorText(QTextBrowser * browser,const QString & text,LOGLEVEL);
+    void fleshSerialPort();   //刷新串口
+    qint64 serialWrite(QSerialPort*&,QString,WRITETYPE);
+    qint64 serialWrite(QSerialPort*&,QByteArray);
 
     QTimer *m_timer;
     QByteArray readDataBuffer;

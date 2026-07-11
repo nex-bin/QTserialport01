@@ -17,6 +17,7 @@ Widget::Widget(QWidget *parent)
 
     ui->setupUi(this);
     init_app();
+    // serialWrite();
 
 }
 
@@ -28,6 +29,7 @@ Widget::~Widget()
 void Widget::on_comboBox_activated(int index)
 {
     qDebug()<<"串口："<<index;
+    portIndex = index;
 
 }
 void Widget::on_comboBox_2_activated(int index)
@@ -84,7 +86,7 @@ void Widget::on_pushButton_clicked()
     ui->comboBox->clear();
     fleshSerialPort();
 
-    Widget::on_comboBox_activated(0);
+    Widget::on_comboBox_activated(portIndex);
     Widget::on_comboBox_2_activated(baudPortIndex);
     Widget::on_comboBox_3_activated(parityIndex);
     Widget::on_comboBox_4_activated(stopIndex);
@@ -116,6 +118,8 @@ void Widget::on_pushButton_2_clicked(){
         ui->checkBox->setEnabled(isConnected);
         ui->checkBox_2->setEnabled(isConnected);
         qDebug()<<"串口已经关闭";
+        appendColorText(ui->textBrowser,"QSerialPort is closed.",ERROR);
+
         ui->pushButton_2->setText("打开串口");
         return;
     }
@@ -124,12 +128,13 @@ void Widget::on_pushButton_2_clicked(){
     const auto serialPortInfos = QSerialPortInfo::availablePorts();
     if(serialPortInfos.isEmpty()){
         qDebug()<<"warning1: QSerialPort is disabled ";
+        appendColorText(ui->textBrowser,"QSerialPort is disabled.",ERROR);
         return;
     }
 
-    int a = 0;
-    a = ui->comboBox->currentIndex();
-    QString portName = serialPortInfos[a].portName();
+    // int a = 0;
+    // a = ui->comboBox->currentIndex();
+    QString portName = serialPortInfos[portIndex].portName();
     qDebug()<<"***********串口信息****************";
     qDebug()<<"name:  "<<portName;
 
@@ -234,11 +239,12 @@ void Widget::on_pushButton_2_clicked(){
         ui->pushButton_4->setEnabled(isConnected);
         ui->checkBox->setEnabled(isConnected);
         ui->checkBox_2->setEnabled(isConnected);
+        appendColorText(ui->textBrowser,"串口打开成功",SUCCESS);
 
         connect(serialPort, &QSerialPort::readyRead, this, &Widget::readSerialData);
     }
     else{
-        QMessageBox::warning(this, "wrong2", serialPort->errorString());
+        appendColorText(ui->textBrowser,serialPort->errorString(),ERROR);
     }
 
 
@@ -251,6 +257,12 @@ void Widget::init_app(){
     m_timer->setSingleShot(true);
     m_timer->setInterval(20);
 
+    portIndex = 0;
+    baudPortIndex = 0;
+    parityIndex = 0;
+    stopIndex = 0;
+    dataBitIndex = 3;
+    flowControlIndex = 0;
     //初始化串口
     fleshSerialPort();
     //初始化波特率
@@ -277,11 +289,18 @@ void Widget::init_app(){
     ReadMode->setExclusive(true);
     ui->checkBox_4->setChecked(true);
 
-
+    ui->pushButton->setEnabled(!isConnected);
     ui->pushButton_3->setEnabled(isConnected);
     ui->pushButton_4->setEnabled(isConnected);
     ui->checkBox->setEnabled(isConnected);
     ui->checkBox_2->setEnabled(isConnected);
+    ui->comboBox->setEnabled(!isConnected);
+
+    if(isConnected){
+        ui->pushButton_2->setText("关闭串口");
+    }else{
+        ui->pushButton_2->setText("打开串口");
+    }
 
 
 }
@@ -312,7 +331,6 @@ void Widget::readSerialData(){
 
 }
 void Widget::on_timerOut(){
-    // ui->scrollAreaWidgetContents->();
     qDebug()<<"timer out";
     if (readDataBuffer.isEmpty()) {
         qDebug()<<"data is empty";
@@ -321,18 +339,14 @@ void Widget::on_timerOut(){
     qDebug()<<readDataBuffer;
     qDebug() << "原始十六进制:" <<typeid(readDataBuffer).name() << readDataBuffer.toHex(' ').toUpper();
     QString time = QString("[" + QTime::currentTime().toString() + "] ");
-    qDebug()<<enableReadSerialPortData;
     if(enableReadSerialPortData){
         if(HexReadFlag){
             QString text = QString(readDataBuffer.toHex(' ').toUpper());
-            appendColorText(ui->textBrowser,text,"red");
-            // ui->textBrowser->append(time + text);
+            appendColorText(ui->textBrowser,text,RECEIVE);
 
         }else{
             QString text = QString(QString::fromUtf8(readDataBuffer));
-            appendColorText(ui->textBrowser,text,"red");
-
-            // ui->textBrowser->append(time + text);
+            appendColorText(ui->textBrowser,text,RECEIVE);
 
         }
     }
@@ -364,6 +378,7 @@ void fun (){
                  << "portInfo manufacturer()" << portInfo.manufacturer()<<"\n"
                  <<"manufecturer";
     }
+
 }
 void Widget::on_pushButton_4_clicked(){
     enableReadSerialPortData = !enableReadSerialPortData;
@@ -374,63 +389,185 @@ void Widget::on_pushButton_4_clicked(){
 
 }
 void Widget::on_pushButton_3_clicked(){
-    //检查串口
+    //检查是否有串口
     if(QSerialPortInfo::availablePorts().isEmpty()){
+        appendColorText(ui->textBrowser,"无串口可用，请检查连接。",ERROR);
         qDebug()<<"warning2: QSerialPort is disabled ";
         return;
     }
-    //数据清洗
+    //检查当前串口是否可使用
+    bool EnableUsedFlag = 0;
+    for(QSerialPortInfo ab :QSerialPortInfo::availablePorts()){
+        if(ab.portName() == serialPort->portName() && serialPort->isReadable()){
+
+            EnableUsedFlag = 1;;
+        }
+    }
+    if(!EnableUsedFlag){
+        appendColorText(ui->textBrowser,"使用的串口被拔出。请检查。",ERROR);
+        isConnected = false;
+
+        //串口指针 serialPort 已经不可以用了，要重置掉。
+        if(m_timer->isActive()){
+            m_timer->stop();
+        }
+        if(serialPort->isOpen()){
+            serialPort->close();
+            delete(serialPort);
+            serialPort = nullptr;
+        }
+        readDataBuffer.clear();
+        init_app();
+        fleshSerialPort();
+        return;
+    }
     QString text = ui->textEdit->toPlainText();
-    QString text1 = text;
-    text.remove(QRegularExpression("\\s+"));  //去除空格和换行
-    //判断是否为空
-    if(text.isEmpty()){
-        qDebug()<<"text is empty.";
-        return;
-    }
-    QRegularExpression hexPattern("^[0-9A-Fa-f]+$");
-    if(!hexPattern.match(text).hasMatch()){
-        qDebug()<<"text 中含有非法字符，请重新输入。";
-        return;
-    }
-    QByteArray data = QByteArray::fromHex(text.toUtf8());
-
-    int a = 0;
-    //定义写模式
     if(HexWriteFlag){
-        //Hex写
-        a = serialPort->write(data);
-
-    }else{
-        //Ascll写
-        a = serialPort->write(text.toUtf8());
+        serialWrite(serialPort,text,HEX);
     }
-    appendColorText(ui->textBrowser,text1,"green");
-
-    if(a<0){
-        QMessageBox::warning(this,"wrong","写错误");
+    else{
+        serialWrite(serialPort,text,ASCLL);
     }
 
 }
 void Widget::fleshSerialPort(){
     const auto serialPortInfos = QSerialPortInfo::availablePorts();
+    for(const QSerialPortInfo &ab : QSerialPortInfo::availablePorts()){
+        qDebug()<<typeid(serialPortInfos).name() << ab.portName();
+    }
     if(serialPortInfos.isEmpty()){
+        ui->comboBox->clear();
         ui->comboBox->addItem("no port");
     }else{
+        ui->comboBox->clear();
         for (const QSerialPortInfo &portInfo : serialPortInfos) {
             ui->comboBox->addItem(portInfo.portName() );
-            qDebug()<<"find port";
+            qDebug()<<"find port"<<portInfo.portName();
         }
     }
 
 }
-void Widget::appendColorText(QTextBrowser * browser,const QString & text,const QString & color){
+void Widget::appendColorText(QTextBrowser * browser,const QString & text,LOGLEVEL level = INFO){
     QString time = QTime::currentTime().toString();
-    QString st = QString("<span style='color:black;'>[%1]</span>""<span style='color:%2;'>[%3]</span>"
-                         ).arg(time).arg(color).arg(text);
-    qDebug()<<"st"<<st;
+    QString color,st;
+    switch(level){//INFO,DEBUG,WARNing,ERROR,SUCCESS,RECEIVE,SEND
+    case INFO:
+        color = "#4fc3f7";
+        st = QString("<span style='color:black;'>[%1]</span>""<span style='color:%2;'>[%3]</span>").arg(time).arg(color).arg(text);
+        break;
+    case DEBUG:
+        color = "#b39ddb";
+        st = QString("<span style='color:black;'>[%1]</span>""<span style='color:black;font-size: 10px;'> Debug：</span>""<span style='color:%2;'>[%3]</span>").arg(time).arg(color).arg(text);
+        break;
+    case WARNing:
+        color = "pink";
+        st = QString("<span style='color:black;'>[%1]</span>""<span style='color:yellow;font-size: 10px;'> Warning：</span>""<span style='color:%2;'>[%3]</span>").arg(time).arg(color).arg(text);
+        break;
+    case ERROR:
+        color = "#ffb74d";
+        st = QString("<span style='color:black;'>[%1]</span>""<span style='color:red;font-size: 15px;'> ERROR! </span>""<span style='color:%2;'>[%3]</span>").arg(time).arg(color).arg(text).arg(level);
+        break;
+    case SUCCESS:
+        color = "#ef5350";
+        st = QString("<span style='color:black;'>[%1]</span>""<span style='color:%2;'>[%3]</span>""<span style='color:green;'> SUCCESS </span>").arg(time).arg(color).arg(text).arg(level);
+        break;
+    case RECEIVE:
+        color = "red";
+        st = QString("<span style='color:black;'>[%1]</span>""<span style='color:black;font-size: 15px;'> 接收：</span>""<span style='color:%2;'>[%3]</span>").arg(time).arg(color).arg(text);
+        break;
+    case SEND:
+        color = "brown";
+        st = QString("<span style='color:black;'>[%1]</span>""<span style='color:black;font-size: 15px;'> 发送：</span>""<span style='color:%2;'>[%3]</span>").arg(time).arg(color).arg(text);
+        break;
+    }
+
     browser->append(st);
 
+}
+qint64 Widget::serialWrite(QSerialPort *& mySerialport,QString text,WRITETYPE writeType){
+    qint64 successWriteFlag = -1;
+    const auto serialPortInfos = QSerialPortInfo::availablePorts();
+    //判断串口可用
+    bool EnablePort = 0;
+    for(const QSerialPortInfo &info : serialPortInfos){
+        if(info.portName() == mySerialport->portName()){
+            EnablePort = 1;
+        }
+    }
+    //串口不可用  返回
+    if(!EnablePort){
+        appendColorText(ui->textBrowser,"ci串口不可用。",ERROR);
+        return successWriteFlag;
+    }
+    //串口可用
+    text.remove(QRegularExpression("\\s+"));  //去除空格和换行
+    QString text2 = text;
+    qDebug()<<text<<"text:";
+    //判断字符是否为空
+    if(text.isEmpty()){
+        appendColorText(ui->textBrowser,"输入内容为空，请输入内容。",ERROR);
+        return successWriteFlag;
+    }
+    //判断字符是否非法
+
+    //不为空  输出
+    //ASCll输出
+    if(writeType == ASCLL){
+        qDebug()<<"text1 中含有非法字符，请重新输入。"<<text.toUtf8();
+
+        successWriteFlag = mySerialport->write(text.toUtf8());
+        if(successWriteFlag != -1){
+
+            appendColorText(ui->textBrowser,"ASCLL: "+text,SEND);
+        }
+        return successWriteFlag;
+    }
+    //Hex输出
+    if(writeType == HEX){
+        //判断文本是否非法
+        QRegularExpression hexPattern("^[0-9A-Fa-f]+$");
+        if(!hexPattern.match(text2).hasMatch()){
+            appendColorText(ui->textBrowser,"输入中含有非法字符，请重新输入。",ERROR);
+            return successWriteFlag;
+        }
+    }
+    qDebug()<<QByteArray::fromHex(text.toUtf8());
+    successWriteFlag = mySerialport->write(QByteArray::fromHex(text.toUtf8()));
+    appendColorText(ui->textBrowser,"HEX: "+text.toUtf8(),SEND);
+
+
+    qDebug()<<typeid(mySerialport).name()<<"text.toUtf8(): "<<text.toUtf8();
+    return successWriteFlag;
+}
+qint64 Widget::serialWrite(QSerialPort *& mySerialport,QByteArray text){
+    qint64 successWriteFlag = -1;
+    const auto serialPortInfos = QSerialPortInfo::availablePorts();
+    //判断串口可用
+    bool EnablePort = 0;
+    for(const QSerialPortInfo &info : serialPortInfos){
+        if(info.portName() == mySerialport->portName()){
+            EnablePort = 1;
+        }
+    }
+    //串口不可用  返回
+    if(!EnablePort){
+        appendColorText(ui->textBrowser,"ci串口不可用。",ERROR);
+        return successWriteFlag;
+    }
+    //串口可用
+    //判断字符是否为空
+    if(text.isEmpty()){
+        appendColorText(ui->textBrowser,"内容为空。请输入内容。",ERROR);
+        return successWriteFlag;
+    }
+    //判断字符是否非法
+
+    //不为空  输出
+    //ASCll输出
+
+    successWriteFlag = mySerialport->write(text);
+    qDebug()<<typeid(mySerialport).name()<<"successWriteFlag: "<<successWriteFlag;
+    return successWriteFlag;
 }
 
 
