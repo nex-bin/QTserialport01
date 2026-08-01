@@ -1,5 +1,4 @@
 #include "widget.h"
-#include "ui_widget.h"
 #include <QSerialPort>
 #include <QSerialPortInfo>
 #include "QDebug"
@@ -9,21 +8,20 @@
 #include "QRegularExpression"
 #include "QButtonGroup"
 #include "QTimer"
+#include "ui_widget.h"
+// #include <core5compat>
+#include <QTextCodec>
 
 Widget::Widget(QWidget *parent)
-    : QWidget(parent)
-    , ui(new Ui::Widget)
+    : QWidget(parent),
+    ui(new Ui::Widget )
 {
 
     ui->setupUi(this);
     init_app();
     // serialWrite();
+    connect(m_timer,&QTimer::timeout,this,&Widget::on_timerOut);
 
-}
-
-Widget::~Widget()
-{
-    delete ui;
 }
 
 void Widget::on_comboBox_activated(int index)
@@ -41,43 +39,57 @@ void Widget::on_checkBox_clicked()
 {
     HexWriteFlag = 0;
     qDebug()<<"HexWriteFlag: "<<HexWriteFlag;
+    appendColorText(ui->textBrowser,"文本写",INFO);
 
 }
 void Widget::on_checkBox_2_clicked()
 {
     HexWriteFlag = 1;
     qDebug()<<"HexWriteFlag: "<<HexWriteFlag;
+    appendColorText(ui->textBrowser,"Hex写",INFO);
+
 }
 void Widget::on_checkBox_3_clicked(){
     HexReadFlag = 0;
     qDebug()<<"HexReadFlag: "<<HexReadFlag;
+    appendColorText(ui->textBrowser,"文本读取",INFO);
+
 
 }
 void Widget::on_checkBox_4_clicked(){
     HexReadFlag = 1;
     qDebug()<<"HexReadFlag: "<<HexReadFlag;
+    appendColorText(ui->textBrowser,"Hex读取",INFO);
+
 
 }
 void Widget::on_comboBox_3_activated(int index)
 {
     qDebug()<<"奇偶校验："<<index;
     parityIndex = index;
+    appendColorText(ui->textBrowser,"奇偶校验变更："+ui->comboBox_3->currentText(),INFO);
+
 }
 void Widget::on_comboBox_4_activated(int index)
 {
     qDebug()<<"停止位："<<index;
     stopIndex = index;
+    appendColorText(ui->textBrowser,"停止位变更："+ui->comboBox_4->currentText(),INFO);
+
 }
 void Widget::on_comboBox_5_activated(int index)
 {
     qDebug()<<"数据位："<<index;
     ui->comboBox_5->setCurrentIndex(index);
     dataBitIndex = index;
+    appendColorText(ui->textBrowser,"数据位变更："+ui->comboBox_5->currentText(),INFO);
+
 }void Widget::on_comboBox_6_activated(int index)
 {
     qDebug()<<"数据流："<<index;
     ui->comboBox_6->setCurrentIndex(index);
     flowControlIndex = index;
+    appendColorText(ui->textBrowser,"数据流变更："+ui->comboBox_6->currentText(),INFO);
 
 }
 
@@ -249,7 +261,9 @@ void Widget::on_pushButton_2_clicked(){
 
 
 }
+
 void Widget::init_app(){
+
     //初始化参数
     enableReadSerialPortData = 1;
     isConnected = false;
@@ -301,7 +315,8 @@ void Widget::init_app(){
     }else{
         ui->pushButton_2->setText("打开串口");
     }
-
+    connect(ui->pushButton_5,&QPushButton::clicked,this,&Widget::cleanReadArea);
+    connect(ui->pushButton_6,&QPushButton::clicked,this,&Widget::cleanWriteArea);
 
 }
 void Widget::readSerialData(){
@@ -312,7 +327,6 @@ void Widget::readSerialData(){
 
     m_timer->start();
 
-    connect(m_timer,&QTimer::timeout,this,&Widget::on_timerOut);
     // on_timerOut();
 
 
@@ -336,8 +350,8 @@ void Widget::on_timerOut(){
         qDebug()<<"data is empty";
         return;
     }
-    qDebug()<<readDataBuffer;
-    qDebug() << "原始十六进制:" <<typeid(readDataBuffer).name() << readDataBuffer.toHex(' ').toUpper();
+    qDebug()<<"接收到的数据"<<readDataBuffer;
+    qDebug() << "原始十六进制:" <<typeid(readDataBuffer).name() << readDataBuffer.toHex(' ').toUpper()<<readDataBuffer;
     QString time = QString("[" + QTime::currentTime().toString() + "] ");
     if(enableReadSerialPortData){
         if(HexReadFlag){
@@ -345,11 +359,34 @@ void Widget::on_timerOut(){
             appendColorText(ui->textBrowser,text,RECEIVE);
 
         }else{
-            QString text = QString(QString::fromUtf8(readDataBuffer));
+            // 1. 创建 GB18030 解码器
+            QTextCodec *codec = QTextCodec::codecForName("GB18030");
+            if(!codec){
+                qDebug()<<"不支持GB18030编码";
+                qDebug() << "支持的编码：" << QStringDecoder::availableCodecs();
+            }
+            // 2. 执行解码，得到 QString
+            QString text = codec->toUnicode(readDataBuffer);
+
+            // // 1. 创建一个解码器，指定源数据的编码
+            // auto decoder = QStringDecoder(QStringDecoder::System); // 或 QStringDecoder::Utf8
+            // // 对于GBK，需要指定名称 "GBK"
+            // auto gbkDecoder = QStringDecoder("GB18030");
+
+            // 2. 执行解码，得到 QString
+            // QString text = gbkDecoder(readDataBuffer);
+            // if (gbkDecoder.hasError()) {
+            //     // 处理解码错误
+            // }
+            qDebug()<<"text"<<text;
+            appendColorText(ui->textBrowser,text,DEBUG);
+
+            text = QString(QString::fromUtf8(readDataBuffer));
             appendColorText(ui->textBrowser,text,RECEIVE);
 
         }
     }
+    m_timer->stop();
     readDataBuffer.clear();
 }
 
@@ -432,14 +469,14 @@ void Widget::on_pushButton_3_clicked(){
 }
 void Widget::fleshSerialPort(){
     const auto serialPortInfos = QSerialPortInfo::availablePorts();
-    for(const QSerialPortInfo &ab : QSerialPortInfo::availablePorts()){
-        qDebug()<<typeid(serialPortInfos).name() << ab.portName();
-    }
+    ui->comboBox->clear();
+
     if(serialPortInfos.isEmpty()){
-        ui->comboBox->clear();
         ui->comboBox->addItem("no port");
     }else{
-        ui->comboBox->clear();
+        for(const QSerialPortInfo &ab : QSerialPortInfo::availablePorts()){
+            qDebug()<<typeid(serialPortInfos).name() << ab.portName();
+        }
         for (const QSerialPortInfo &portInfo : serialPortInfos) {
             ui->comboBox->addItem(portInfo.portName() );
             qDebug()<<"find port"<<portInfo.portName();
@@ -447,13 +484,13 @@ void Widget::fleshSerialPort(){
     }
 
 }
-void Widget::appendColorText(QTextBrowser * browser,const QString & text,LOGLEVEL level = INFO){
+void Widget::appendColorText(QTextBrowser * browser,const QString & text,enum LOGLEVEL level){
     QString time = QTime::currentTime().toString();
     QString color,st;
     switch(level){//INFO,DEBUG,WARNing,ERROR,SUCCESS,RECEIVE,SEND
     case INFO:
         color = "#4fc3f7";
-        st = QString("<span style='color:black;'>[%1]</span>""<span style='color:%2;'>[%3]</span>").arg(time).arg(color).arg(text);
+        st = QString("<span style='color:black;'>[%1]</span>""<span style='color:[%2];'>[%3]</span>").arg(time).arg(color).arg(text);
         break;
     case DEBUG:
         color = "#b39ddb";
@@ -539,35 +576,13 @@ qint64 Widget::serialWrite(QSerialPort *& mySerialport,QString text,WRITETYPE wr
     qDebug()<<typeid(mySerialport).name()<<"text.toUtf8(): "<<text.toUtf8();
     return successWriteFlag;
 }
-qint64 Widget::serialWrite(QSerialPort *& mySerialport,QByteArray text){
-    qint64 successWriteFlag = -1;
-    const auto serialPortInfos = QSerialPortInfo::availablePorts();
-    //判断串口可用
-    bool EnablePort = 0;
-    for(const QSerialPortInfo &info : serialPortInfos){
-        if(info.portName() == mySerialport->portName()){
-            EnablePort = 1;
-        }
-    }
-    //串口不可用  返回
-    if(!EnablePort){
-        appendColorText(ui->textBrowser,"ci串口不可用。",ERROR);
-        return successWriteFlag;
-    }
-    //串口可用
-    //判断字符是否为空
-    if(text.isEmpty()){
-        appendColorText(ui->textBrowser,"内容为空。请输入内容。",ERROR);
-        return successWriteFlag;
-    }
-    //判断字符是否非法
-
-    //不为空  输出
-    //ASCll输出
-
-    successWriteFlag = mySerialport->write(text);
-    qDebug()<<typeid(mySerialport).name()<<"successWriteFlag: "<<successWriteFlag;
-    return successWriteFlag;
+void Widget::cleanReadArea(){
+    ui->textBrowser->clear();
 }
-
-
+void Widget::cleanWriteArea(){
+    ui->textEdit->clear();
+}
+Widget::~Widget()
+{
+    delete ui;
+}

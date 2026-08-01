@@ -6,6 +6,7 @@
 #include <QSerialPortInfo>
 #include "QTimer"
 #include <QTextBrowser>
+#include <QStackedWidget>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -17,6 +18,7 @@ class Widget : public QWidget
 {
     Q_OBJECT
     QSerialPort *serialPort;//定义串口指针
+
 
 public:
     enum LOGLEVEL{INFO,DEBUG,WARNing,ERROR,SUCCESS,RECEIVE,SEND};
@@ -34,12 +36,14 @@ public:
     bool HexWriteFlag = 1;                  //十六进制写入标识
     bool HexReadFlag = 1;                   //十六进制读取标识
     bool isConnected = 0;                   //串口连接标识
-    bool enableReadSerialPortData = 1;      //串口可读标识
+    bool enableReadSerialPortData = 1;      //是否读取串口数据标识
 
     void appendColorText(QTextBrowser * browser,const QString & text,LOGLEVEL);
     void fleshSerialPort();   //刷新串口
+    void cleanReadArea();
+    void cleanWriteArea();
     qint64 serialWrite(QSerialPort*&,QString,WRITETYPE);
-    qint64 serialWrite(QSerialPort*&,QByteArray);
+
 
     QTimer *m_timer;
     QByteArray readDataBuffer;
